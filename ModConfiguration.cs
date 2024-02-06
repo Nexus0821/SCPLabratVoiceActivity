@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,9 @@ namespace LabratVoiceActivity
         private static ModConfigLoadErrorType _errorType = ModConfigLoadErrorType.None;
         private static bool _handledError;
 
+        private static DateTime _lastUpdateTime;
+        private static TimeSpan _timeToStop = TimeSpan.FromMinutes(1);
+
         private static readonly ModConfiguration _defaultConfiguration = new ModConfiguration
         {
             ModGuid = Entry.GUID,
@@ -40,7 +44,7 @@ namespace LabratVoiceActivity
             }
         }
 
-        public static ModConfiguration Instance => JsonConvert.DeserializeObject<ModConfiguration>(File.ReadAllText(ConfigurationPath));
+        public static ModConfiguration Instance => _instance;
 
         public static ModConfigLoadErrorType LoadConfiguration()
         {
@@ -49,21 +53,38 @@ namespace LabratVoiceActivity
             if (!File.Exists(ConfigurationPath))
                 _errorType = ModConfigLoadErrorType.FileNotFound;
 
-            if (!FailedToLoad && _instance == null)
-            {
-                try
-                {
-                    _instance = JsonConvert.DeserializeObject<ModConfiguration>(File.ReadAllText(ConfigurationPath));
-                }
-                catch 
-                {
-                    _logger.Error("Configuration JSON deserialization failed");
-                    _errorType = ModConfigLoadErrorType.JsonDeserializationFailed; 
-                }
-            }
+            if (_instance != null)
+                Task.Factory.StartNew(UpdateModTask, TaskCreationOptions.LongRunning);
 
             HandleError();
             return _errorType;
+        }
+
+        private static async Task UpdateModTask()
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+
+            for (; ; )
+            {
+                if ((DateTime.Now - _lastUpdateTime) > _timeToStop)
+                {
+                    sw.Restart();
+
+                    try
+                    {
+                        _instance = JsonConvert.DeserializeObject<ModConfiguration>(File.ReadAllText(ConfigurationPath));
+                        _logger.Warning("Loaded mod config in " + sw.ElapsedMilliseconds + "ms");
+                    }
+                    catch
+                    {
+                        _logger.Error("Configuration JSON deserialization failed");
+                        _errorType = ModConfigLoadErrorType.JsonDeserializationFailed;
+                    }
+
+                    HandleError();
+                    _lastUpdateTime = DateTime.Now;
+                }
+            }
         }
 
         private static void HandleError()
