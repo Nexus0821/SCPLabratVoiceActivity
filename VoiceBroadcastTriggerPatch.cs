@@ -16,16 +16,20 @@ namespace LabratVoiceActivity
         [HarmonyLib.HarmonyPrefix]
         public static bool Prefix(ref CommActivationMode __result)
         {
-            if (!_init)
+            try
             {
-                _logger.Warning("VoiceBroadcastTrigger patch (is enabled: " + ModConfiguration.Instance.IsVoiceActivationEnabled + ")");
-                _init = true;
+                if (!_init)
+                {
+                    _logger.Warning("VoiceBroadcastTrigger patch (is enabled: " + ModConfiguration.Instance.IsVoiceActivationEnabled + ")");
+                    _init = true;
+                }
+
+                if (!GameStateManager.isVR && ModConfiguration.Instance.IsVoiceActivationEnabled)
+                    __result = CommActivationMode.VoiceActivation;
+
+                return !(!GameStateManager.isVR && ModConfiguration.Instance.IsVoiceActivationEnabled);
             }
-
-            if (ModConfiguration.Instance.IsVoiceActivationEnabled)
-                __result = CommActivationMode.VoiceActivation;
-
-            return !ModConfiguration.Instance.IsVoiceActivationEnabled;
+            catch { return true; }
         }
     }
 }

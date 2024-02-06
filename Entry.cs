@@ -12,7 +12,7 @@ namespace LabratVoiceActivity
     {
         public const string GUID = "com.nexus.scplabrat.voiceactivity";
         public const string NAME = "LabratVoiceActivity";
-        public const string VERSION = "1.0.0";
+        public const string VERSION = "1.0.5";
 
         static ILogger<Entry> _logger = UnityClassLogger<Entry>.Create();
 

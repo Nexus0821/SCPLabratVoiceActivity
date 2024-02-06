@@ -19,13 +19,14 @@ namespace LabratVoiceActivity
     public sealed class ModConfiguration
     {
         private static ILogger<ModConfiguration> _logger = UnityClassLogger<ModConfiguration>.Create();
-        private static ModConfiguration _instance;
+        private static ModConfiguration _instance = JsonConvert.DeserializeObject<ModConfiguration>(File.ReadAllText(ConfigurationPath));
 
         private static ModConfigLoadErrorType _errorType = ModConfigLoadErrorType.None;
         private static bool _handledError;
 
         private static DateTime _lastUpdateTime;
         private static TimeSpan _timeToStop = TimeSpan.FromMinutes(1);
+        private static bool _firstUpdate = true;
 
         private static readonly ModConfiguration _defaultConfiguration = new ModConfiguration
         {
@@ -53,7 +54,7 @@ namespace LabratVoiceActivity
             if (!File.Exists(ConfigurationPath))
                 _errorType = ModConfigLoadErrorType.FileNotFound;
 
-            if (_instance != null)
+            if (_instance == null)
                 Task.Factory.StartNew(UpdateModTask, TaskCreationOptions.LongRunning);
 
             HandleError();
@@ -66,8 +67,9 @@ namespace LabratVoiceActivity
 
             for (; ; )
             {
-                if ((DateTime.Now - _lastUpdateTime) > _timeToStop)
+                if (!_firstUpdate && (DateTime.Now - _lastUpdateTime) > _timeToStop)
                 {
+                    _firstUpdate = true;
                     sw.Restart();
 
                     try
